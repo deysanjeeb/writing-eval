@@ -14,6 +14,7 @@ def levenshtein_similarity(a, b):
     """Calculate Levenshtein similarity between two strings"""
     return 1 - (edit_distance(a, b) / max(len(a), len(b)))
 
+
 def jaccard_similarity(a, b):
     """Calculate Jaccard similarity between two sets of tokens"""
     a_tokens = set(a.split())
@@ -21,6 +22,7 @@ def jaccard_similarity(a, b):
     intersection = a_tokens.intersection(b_tokens)
     union = a_tokens.union(b_tokens)
     return len(intersection) / len(union)
+
 
 def kl_divergence(a, b):
     """Calculate KL divergence between two probability distributions"""
@@ -43,13 +45,16 @@ def euclidean_distance(a,b):
     return distance
 
 
-tokenizer = AutoTokenizer.from_pretrained("")
-llm_generator = pipeline('text-generation', model='', tokenizer = tokenizer, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.2")
+llm_generator = pipeline('text-generation', model='mistralai/Mistral-7B-Instruct-v0.2', tokenizer = tokenizer, trust_remote_code=True)
 
 metadata_df = pd.read_csv('metadata.csv')
+
+
 def generate_prompt(text, length_factor, operation):
     target_length = int(len(text.split()) * length_factor) if operation == 'longer' else int(len(text.split()) / length_factor)
-    return f"Generate an essay that is {length_factor * 100 if operation == 'longer' else 100 / length_factor}% the length of this in the same style:\n\n{text}"
+    return (target_length, f"Generate an essay that is {length_factor * 100 if operation == 'longer' else 100 / length_factor}% the length of this in the same style:\n\n{text}")
+
 
 # Initialize empty lists to store results
 results = []
@@ -58,15 +63,16 @@ results = []
 for _, row in metadata_df.iterrows():
     file_name = row['file_name']
     original_text = row['original-text']
-    original_length = row['length']
+    original_length = int(len(original_text.split()))
 
-    for length_factor in [0.25, 0.5, 0.75, 1.0]:
+    # for length_factor in [0.25, 0.5, 0.75, 1.0]:
+    for length_factor in [0.25, 0.5, 0.75]:
         for operation in ['longer', 'shorter']:
-            prompt = generate_prompt(original_text, length_factor, operation)
+            tar_len, prompt = generate_prompt(original_text, length_factor, operation)
+            print(prompt)
+            print(original_length)
 
-
-            # Generate text using GPT-3
-            generated_text = llm_generator(prompt, max_length=int(original_length * length_factor) if operation == 'longer' else int(original_length // length_factor))[0]['generated_text']
+            generated_text = llm_generator(prompt, max_length=tar_len, truncation=True)[0]['generated_text']
             print(generated_text)
 
 
